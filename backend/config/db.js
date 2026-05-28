@@ -17,7 +17,7 @@ pool.getConnection((err, connection) => {
   if (err) console.error("❌ Error de conexión a MySQL:", err.message);
   else {
     console.log("✅ Conectado a la base de datos de Halcones");
-    connection.release();
+    connection.release(); 
   }
 });
 
