@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Atletas — Club Halcones</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <h1>🏆 Club Halcones</h1>
+    <div>
+      <a href="index.html">Dashboard</a>
+      <a href="pagos.html">Pagos</a>
+      <a href="#" onclick="cerrarSesion()">Cerrar sesión</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <!-- Mensaje de éxito/error -->
+    <div id="mensaje" class="mensaje"></div>
+
+    <!-- Formulario de registro -->
+    <div class="section-box">
+      <h2>➕ Registrar Atleta</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" id="nombre" placeholder="Nombre del atleta">
+        </div>
+        <div class="form-group">
+          <label>Apellido</label>
+          <input type="text" id="apellido" placeholder="Apellido del atleta">
+        </div>
+        <div class="form-group">
+          <label>Fecha de nacimiento</label>
+          <input type="date" id="fecha_nacimiento">
+        </div>
+        <div class="form-group">
+          <label>Disciplina</label>
+          <select id="id_disciplina">
+            <option value="1">Fútbol</option>
+            <option value="2">Baloncesto</option>
+            <option value="3">Voleibol</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>ID del Tutor</label>
+          <input type="number" id="id_tutor" placeholder="Ej: 7">
+        </div>
+        <div class="form-group">
+          <label>ID del Grupo</label>
+          <input type="number" id="id_grupo" placeholder="Ej: 4">
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="registrarAtleta()">Registrar Atleta</button>
+    </div>
+
+    <!-- Tabla de atletas -->
+    <div class="section-box">
+      <h2>📋 Lista de Atletas</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nombre</th>
+              <th>Apellido</th>
+              <th>Disciplina</th>
+              <th>Grupo</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaAtletas"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de edición -->
+  <div class="modal-overlay" id="modalEditar">
+    <div class="modal">
+      <h3>✏️ Editar Atleta</h3>
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Nombre</label>
+        <input type="text" id="editNombre">
+      </div>
+      <div class="form-group">
+        <label>Apellido</label>
+        <input type="text" id="editApellido">
+      </div>
+      <div class="form-group">
+        <label>Fecha de nacimiento</label>
+        <input type="date" id="editFecha">
+      </div>
+      <div class="form-group">
+        <label>Disciplina</label>
+        <select id="editDisciplina">
+          <option value="1">Fútbol</option>
+          <option value="2">Baloncesto</option>
+          <option value="3">Voleibol</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ID del Grupo</label>
+        <input type="number" id="editGrupo">
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="guardarEdicion()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:3000";
+
+    const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+    if (!usuario) window.location.href = "login.html";
+
+    function cerrarSesion() {
+      sessionStorage.removeItem("usuario");
+      window.location.href = "login.html";
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const msg = document.getElementById("mensaje");
+      msg.textContent = texto;
+      msg.className = `mensaje mensaje-${tipo}`;
+      msg.style.display = "block";
+      setTimeout(() => msg.style.display = "none", 3000);
+    }
+
+    // ✅ READ
+    function cargarAtletas() {
+      fetch(`${API}/atletas`)
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById("tablaAtletas");
+          tbody.innerHTML = "";
+          data.forEach(a => {
+            const badge = a.estado === "activo" ? "success"
+                        : a.estado === "pendiente" ? "warning" : "danger";
+            tbody.innerHTML += `
+              <tr>
+                <td>${a.id_atleta}</td>
+                <td>${a.nombre}</td>
+                <td>${a.apellido}</td>
+                <td>${a.disciplina || "—"}</td>
+                <td>${a.grupo || "—"}</td>
+                <td><span class="badge badge-${badge}">${a.estado}</span></td>
+                <td>
+                  <button class="btn btn-warning" style="padding:5px 10px; font-size:12px;"
+                    onclick="abrirModal(${a.id_atleta},'${a.nombre}','${a.apellido}','${a.fecha_nacimiento ? a.fecha_nacimiento.substring(0,10) : ''}',${a.id_disciplina || 1},${a.id_grupo || 4})">
+                    ✏️ Editar
+                  </button>
+                  <button class="btn btn-danger" style="padding:5px 10px; font-size:12px; margin-left:5px;"
+                    onclick="eliminarAtleta(${a.id_atleta})">
+                    🗑️ Eliminar
+                  </button>
+                </td>
+              </tr>`;
+          });
+        })
+        .catch(() => mostrarMensaje("Error al cargar atletas.", "error"));
+    }
+
+    // ✅ CREATE
+    function registrarAtleta() {
+      const nombre = document.getElementById("nombre").value.trim();
+      const apellido = document.getElementById("apellido").value.trim();
+      const fecha_nacimiento = document.getElementById("fecha_nacimiento").value;
+      const id_disciplina = document.getElementById("id_disciplina").value;
+      const id_tutor = document.getElementById("id_tutor").value;
+      const id_grupo = document.getElementById("id_grupo").value;
+
+      if (!nombre || !apellido || !fecha_nacimiento || !id_tutor || !id_grupo) {
+        mostrarMensaje("Por favor completa todos los campos.", "error");
+        return;
+      }
+
+      fetch(`${API}/atletas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, apellido, fecha_nacimiento,
+          id_disciplina: parseInt(id_disciplina),
+          id_tutor: parseInt(id_tutor),
+          id_grupo: parseInt(id_grupo) })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          mostrarMensaje("Atleta registrado exitosamente ✅", "exito");
+          cargarAtletas();
+          // Limpiar formulario
+          ["nombre","apellido","fecha_nacimiento","id_tutor","id_grupo"]
+            .forEach(id => document.getElementById(id).value = "");
+        } else {
+          mostrarMensaje(data.error || "Error al registrar.", "error");
+        }
+      })
+      .catch(() => mostrarMensaje("Error al conectar con el servidor.", "error"));
+    }
+
+    // ✅ UPDATE
+    function abrirModal(id, nombre, apellido, fecha, disciplina, grupo) {
+      document.getElementById("editId").value = id;
+      document.getElementById("editNombre").value = nombre;
+      document.getElementById("editApellido").value = apellido;
+      document.getElementById("editFecha").value = fecha;
+      document.getElementById("editDisciplina").value = disciplina;
+      document.getElementById("editGrupo").value = grupo;
+      document.getElementById("modalEditar").classList.add("active");
+    }
+
+    function cerrarModal() {
+      document.getElementById("modalEditar").classList.remove("active");
+    }
+
+    function guardarEdicion() {
+      const id = document.getElementById("editId").value;
+      const nombre = document.getElementById("editNombre").value.trim();
+      const apellido = document.getElementById("editApellido").value.trim();
+      const fecha_nacimiento = document.getElementById("editFecha").value;
+      const id_disciplina = document.getElementById("editDisciplina").value;
+      const id_grupo = document.getElementById("editGrupo").value;
+
+      if (!nombre || !apellido || !fecha_nacimiento) {
+        mostrarMensaje("Completa todos los campos del formulario.", "error");
+        return;
+      }
+
+      fetch(`${API}/atletas/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, apellido, fecha_nacimiento,
+          id_disciplina: parseInt(id_disciplina),
+          id_grupo: parseInt(id_grupo) })
+      })
+      .then(res => res.json())
+      .then(() => {
+        mostrarMensaje("Atleta actualizado correctamente ✅", "exito");
+        cerrarModal();
+        cargarAtletas();
+      })
+      .catch(() => mostrarMensaje("Error al actualizar.", "error"));
+    }
+
+    // ✅ DELETE
+    function eliminarAtleta(id) {
+      if (!confirm("¿Estás seguro de que deseas eliminar este atleta?")) return;
+      fetch(`${API}/atletas/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(() => {
+          mostrarMensaje("Atleta eliminado correctamente 🗑️", "exito");
+          cargarAtletas();
+        })
+        .catch(() => mostrarMensaje("Error al eliminar.", "error"));
+    }
+
+    cargarAtletas();
+  </script>
+</body>
+</html>

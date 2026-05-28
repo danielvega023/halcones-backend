@@ -13,7 +13,7 @@ router.get("/", (req, res) => {
 router.post("/", (req, res) => {
   const { titulo, mensaje, destinatario, prioridad } = req.body;
   const sql = `INSERT INTO comunicados (titulo, mensaje, destinatario, prioridad) VALUES (?, ?, ?, ?)`;
-  db.query(sql, [titulo, mensaje, destinatario, prioridad || "normal"], (err, result) => {
+  db.query(sql, [titulo, mensaje, destinatario || "todos", prioridad || "normal"], (err, result) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json({ mensaje: "Comunicado publicado correctamente", id: result.insertId });
   });

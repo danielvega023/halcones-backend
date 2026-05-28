@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pagos — Club Halcones</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <h1>🏆 Club Halcones</h1>
+    <div>
+      <a href="index.html">Dashboard</a>
+      <a href="atletas.html">Atletas</a>
+      <a href="#" onclick="cerrarSesion()">Cerrar sesión</a>
+    </div>
+  </nav>
+
+  <div class="container">
+
+    <div id="mensaje" class="mensaje"></div>
+
+    <!-- Formulario de pago -->
+    <div class="section-box">
+      <h2>➕ Registrar Pago</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ID del Atleta</label>
+          <input type="number" id="id_atleta" placeholder="Ej: 5">
+        </div>
+        <div class="form-group">
+          <label>Tipo de pago</label>
+          <select id="tipo_pago">
+            <option value="mensualidad">Mensualidad</option>
+            <option value="reinscripcion">Reinscripción</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Monto (RD$)</label>
+          <input type="number" id="monto" placeholder="Ej: 1500">
+        </div>
+        <div class="form-group">
+          <label>Método de pago</label>
+          <select id="metodo_pago">
+            <option value="efectivo">Efectivo</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-success" onclick="registrarPago()">Registrar Pago</button>
+    </div>
+
+    <!-- Tabla de pagos -->
+    <div class="section-box">
+      <h2>📋 Lista de Pagos</h2>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Atleta</th>
+              <th>Tipo</th>
+              <th>Monto</th>
+              <th>Método</th>
+              <th>Fecha</th>
+              <th>Estado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="tablaPagos"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de edición -->
+  <div class="modal-overlay" id="modalEditar">
+    <div class="modal">
+      <h3>✏️ Editar Pago</h3>
+      <input type="hidden" id="editId">
+      <div class="form-group">
+        <label>Tipo de pago</label>
+        <select id="editTipo">
+          <option value="mensualidad">Mensualidad</option>
+          <option value="reinscripcion">Reinscripción</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Monto (RD$)</label>
+        <input type="number" id="editMonto">
+      </div>
+      <div class="form-group">
+        <label>Método de pago</label>
+        <select id="editMetodo">
+          <option value="efectivo">Efectivo</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+      </div>
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+        <button class="btn btn-success" onclick="guardarEdicion()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = "http://localhost:3000";
+
+    const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+    if (!usuario) window.location.href = "login.html";
+
+    function cerrarSesion() {
+      sessionStorage.removeItem("usuario");
+      window.location.href = "login.html";
+    }
+
+    function mostrarMensaje(texto, tipo) {
+      const msg = document.getElementById("mensaje");
+      msg.textContent = texto;
+      msg.className = `mensaje mensaje-${tipo}`;
+      msg.style.display = "block";
+      setTimeout(() => msg.style.display = "none", 3000);
+    }
+
+    // ✅ READ
+    function cargarPagos() {
+      fetch(`${API}/pagos`)
+        .then(res => res.json())
+        .then(data => {
+          const tbody = document.getElementById("tablaPagos");
+          tbody.innerHTML = "";
+          data.forEach(p => {
+            const badge = p.estado === "aprobado" ? "success"
+                        : p.estado === "pendiente" ? "warning" : "danger";
+            const fecha = p.fecha_pago ? p.fecha_pago.substring(0, 10) : "—";
+            tbody.innerHTML += `
+              <tr>
+                <td>${p.id_pago}</td>
+                <td>${p.nombre_atleta} ${p.apellido_atleta}</td>
+                <td>${p.tipo_pago}</td>
+                <td>RD$ ${parseFloat(p.monto).toLocaleString()}</td>
+                <td>${p.metodo_pago}</td>
+                <td>${fecha}</td>
+                <td><span class="badge badge-${badge}">${p.estado}</span></td>
+                <td>
+                  <button class="btn btn-warning" style="padding:5px 10px; font-size:12px;"
+                    onclick="abrirModal(${p.id_pago},'${p.tipo_pago}',${p.monto},'${p.metodo_pago}')">
+                    ✏️ Editar
+                  </button>
+                  <button class="btn btn-danger" style="padding:5px 10px; font-size:12px; margin-left:5px;"
+                    onclick="eliminarPago(${p.id_pago})">
+                    🗑️ Eliminar
+                  </button>
+                </td>
+              </tr>`;
+          });
+        })
+        .catch(() => mostrarMensaje("Error al cargar pagos.", "error"));
+    }
+
+    // ✅ CREATE
+    function registrarPago() {
+      const id_atleta = document.getElementById("id_atleta").value;
+      const tipo_pago = document.getElementById("tipo_pago").value;
+      const monto = document.getElementById("monto").value;
+      const metodo_pago = document.getElementById("metodo_pago").value;
+
+      if (!id_atleta || !monto) {
+        mostrarMensaje("Por favor completa todos los campos.", "error");
+        return;
+      }
+
+      fetch(`${API}/pagos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_atleta: parseInt(id_atleta),
+          tipo_pago, monto: parseFloat(monto), metodo_pago })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.id) {
+          mostrarMensaje(`Pago registrado — Estado: ${data.estado} ✅`, "exito");
+          cargarPagos();
+          document.getElementById("id_atleta").value = "";
+          document.getElementById("monto").value = "";
+        } else {
+          mostrarMensaje(data.error || "Error al registrar.", "error");
+        }
+      })
+      .catch(() => mostrarMensaje("Error al conectar con el servidor.", "error"));
+    }
+
+    // ✅ UPDATE
+    function abrirModal(id, tipo, monto, metodo) {
+      document.getElementById("editId").value = id;
+      document.getElementById("editTipo").value = tipo;
+      document.getElementById("editMonto").value = monto;
+      document.getElementById("editMetodo").value = metodo;
+      document.getElementById("modalEditar").classList.add("active");
+    }
+
+    function cerrarModal() {
+      document.getElementById("modalEditar").classList.remove("active");
+    }
+
+    function guardarEdicion() {
+      const id = document.getElementById("editId").value;
+      const tipo_pago = document.getElementById("editTipo").value;
+      const monto = document.getElementById("editMonto").value;
+      const metodo_pago = document.getElementById("editMetodo").value;
+
+      fetch(`${API}/pagos/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tipo_pago, monto: parseFloat(monto), metodo_pago })
+      })
+      .then(res => res.json())
+      .then(() => {
+        mostrarMensaje("Pago actualizado correctamente ✅", "exito");
+        cerrarModal();
+        cargarPagos();
+      })
+      .catch(() => mostrarMensaje("Error al actualizar.", "error"));
+    }
+
+    // ✅ DELETE
+    function eliminarPago(id) {
+      if (!confirm("¿Estás seguro de que deseas eliminar este pago?")) return;
+      fetch(`${API}/pagos/${id}`, { method: "DELETE" })
+        .then(res => res.json())
+        .then(() => {
+          mostrarMensaje("Pago eliminado correctamente 🗑️", "exito");
+          cargarPagos();
+        })
+        .catch(() => mostrarMensaje("Error al eliminar.", "error"));
+    }
+
+    cargarPagos();
+  </script>
+</body>
+</html>

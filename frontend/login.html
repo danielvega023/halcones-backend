@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Club Halcones</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-box">
+      <h2>🏆 Club Halcones</h2>
+      <p>Sistema de Gestión Deportiva</p>
+
+      <div id="mensaje" class="mensaje"></div>
+
+      <div class="form-group">
+        <label for="correo">Correo electrónico</label>
+        <input type="email" id="correo" placeholder="correo@halcones.com">
+      </div>
+
+      <div class="form-group">
+        <label for="contrasena">Contraseña</label>
+        <input type="password" id="contrasena" placeholder="••••••••">
+        <!-- Opción para mostrar/ocultar contraseña -->
+        <div style="margin-top: 8px;">
+          <input type="checkbox" id="mostrarContrasena">
+          <label for="mostrarContrasena" style="font-size: 0.9rem; cursor: pointer;">Mostrar contraseña</label>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="iniciarSesion()">Iniciar Sesión</button>
+    </div>
+  </div>
+
+  <script>
+    // --- Funcionalidad mostrar/ocultar contraseña ---
+    const passInput = document.getElementById('contrasena');
+    const toggleCheckbox = document.getElementById('mostrarContrasena');
+
+    if (toggleCheckbox) {
+      toggleCheckbox.addEventListener('change', function() {
+        passInput.type = this.checked ? 'text' : 'password';
+      });
+    }
+
+    // --- Lógica de login original (sin cambios) ---
+    function iniciarSesion() {
+      const correo = document.getElementById("correo").value.trim();
+      const contrasena = document.getElementById("contrasena").value.trim();
+      const mensaje = document.getElementById("mensaje");
+
+      if (!correo || !contrasena) {
+        mensaje.textContent = "Por favor completa todos los campos.";
+        mensaje.className = "mensaje mensaje-error";
+        mensaje.style.display = "block";
+        return;
+      }
+
+      fetch("http://localhost:3000/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ correo, contrasena })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.usuario) {
+          sessionStorage.setItem("usuario", JSON.stringify(data.usuario));
+          window.location.href = "index.html";
+        } else {
+          mensaje.textContent = data.mensaje || "Credenciales incorrectas.";
+          mensaje.className = "mensaje mensaje-error";
+          mensaje.style.display = "block";
+        }
+      })
+      .catch(() => {
+        mensaje.textContent = "Error al conectar con el servidor.";
+        mensaje.className = "mensaje mensaje-error";
+        mensaje.style.display = "block";
+      });
+    }
+
+    // Login con tecla Enter
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") iniciarSesion();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Club Halcones</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <nav class="navbar">
+    <h1>🏆 Club Deportivo y Cultural Halcones</h1>
+    <div>
+      <span id="nombreUsuario" style="color:white; margin-right:15px; font-size:14px;"></span>
+      <a href="#" onclick="cerrarSesion()">Cerrar sesión</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h2 style="margin-bottom:5px; color:#1F4E79;">Panel Principal</h2>
+    <p style="color:#666; margin-bottom:20px;">Bienvenido al sistema de gestión del club.</p>
+
+    <div class="cards">
+      <a href="atletas.html" class="card">
+        <div class="icon">🏃</div>
+        <h3>Atletas</h3>
+        <p>Gestionar inscripciones y deportistas</p>
+      </a>
+      <a href="pagos.html" class="card">
+        <div class="icon">💰</div>
+        <h3>Pagos</h3>
+        <p>Control de mensualidades y reinscripciones</p>
+      </a>
+      <a href="#" class="card">
+        <div class="icon">📋</div>
+        <h3>Asistencia</h3>
+        <p>Registro diario de asistencia</p>
+      </a>
+      <a href="#" class="card">
+        <div class="icon">📢</div>
+        <h3>Comunicados</h3>
+        <p>Avisos y notificaciones del club</p>
+      </a>
+    </div>
+  </div>
+
+  <script>
+    // Verificar que hay sesión activa
+    const usuario = JSON.parse(sessionStorage.getItem("usuario"));
+    if (!usuario) {
+      window.location.href = "login.html";
+    } else {
+      document.getElementById("nombreUsuario").textContent =
+        `${usuario.nombre} (${usuario.rol})`;
+    }
+
+    function cerrarSesion() {
+      sessionStorage.removeItem("usuario");
+      window.location.href = "login.html";
+    }
+  </script>
+</body>
+</html>
