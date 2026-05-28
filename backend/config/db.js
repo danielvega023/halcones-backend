@@ -19,5 +19,5 @@ pool.getConnection((err, connection) => {
     console.log("✅ Conectado a la base de datos de Halcones");
     connection.release(); 
   }
-}); 
+});  
 module.exports = pool;
